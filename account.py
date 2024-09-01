@@ -14,7 +14,7 @@ except ValueError as e:
 #initialize google oauth2 client
 client_id= st.secrets["client_id"]
 client_secrets= st.secrets["client_secret"]
-redirect_url = "http://localhost:8501/"
+redirect_url = "https://transcribers.streamlit.app/"
 
 client=GoogleOAuth2(client_id=client_id,client_secret=client_secrets)
 

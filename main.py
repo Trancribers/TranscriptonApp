@@ -12,6 +12,7 @@ class multiApp:
 
 
     def run():
+        st.header("Welcome to Transcribers")
         with st.sidebar:
             app=option_menu(
                 menu_title='Transcribers',

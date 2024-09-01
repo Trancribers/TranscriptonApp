@@ -58,6 +58,14 @@ def show_login_button():
     st.markdown(f'<a href="{authorization_url}" target="_self">Login</a>',unsafe_allow_html=True)
     get_logged_in_user_email()
 
+def refresh_page():
+    """Force refresh of the page using JavaScript."""
+    st.markdown("""
+        <script>
+        window.location.reload();
+        </script>
+    """, unsafe_allow_html=True)
+    
 def app():
     st.title("Account")
 
@@ -72,5 +80,5 @@ def app():
         st.write(st.session_state.email)
         if st.button("Logout",type="primary", key="logout_non_requiured"):
             st.session_state.email=None
-            st.experimental_rerun()
+            refresh_page()
 app()

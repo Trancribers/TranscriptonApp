@@ -65,8 +65,7 @@ def show_login_button():
     try:
         authorization_url = asyncio.run(client.get_authorization_url(
             redirect_url,
-            scope=["email", "profile"],
-            extras_params={"access_type": "offline"}
+            scope=["email", "profile"]
         ))
         st.write(f"Authorization URL: {authorization_url}")  # Debug: Print the URL
         st.markdown(f'<a href="{authorization_url}" target="_self">Login</a>', unsafe_allow_html=True)

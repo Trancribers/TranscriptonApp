@@ -6,6 +6,7 @@ import subprocess
 from datetime import datetime
 import time
 from docx import Document
+import account
 
 # Define folder paths
 temp_folder = "temp_files"
@@ -116,9 +117,9 @@ def transcribe_audio_with_whisperx(audio_file):
     """Transcribes the given audio file using WhisperX and saves the transcription to a .docx file."""
     log_activity(f"Starting transcription for {audio_file}.")
 
-    device = "cpu"  # Use 'cuda' if a GPU is available
-    batch_size = 4
-    compute_type = "int8"
+    device = "cuda"  # Use 'cuda' if a GPU is available
+    batch_size = 8
+    compute_type = "float16"
 
     try:
         model = whisperx.load_model("medium", device, compute_type=compute_type,language='en')

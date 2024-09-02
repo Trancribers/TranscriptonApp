@@ -2,7 +2,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import auth, exceptions, credentials, initialize_app
-from streamlit_google_auth import Authenticate
+from streamlit_google_auth import Authenticate, CookieHandler
 
 # Firebase Setup
 firebase_cred = {
@@ -24,17 +24,13 @@ try:
 except ValueError as e:
     initialize_app(cred)
 
-# Google OAuth2 Setup
-client_id = st.secrets["google_oauth"]["client_id"]
-client_secret = st.secrets["google_oauth"]["client_secret"]
-redirect_uri = "https://transcribers.streamlit.app/"
 
 # Streamlit Authentication
 credentials = Authenticate(
-    client_id=client_id,
-    client_secret=client_secret,
-    redirect_uri=redirect_uri,
-    scopes=["profile", "email"]
+    secret_credentials_path = google_oauth_cred.json,
+    cookie_name='my_cookie_name',
+    cookie_key='this_is_secret',
+    redirect_uri="https://transcribers.streamlit.app/",
 )
 
 def app():

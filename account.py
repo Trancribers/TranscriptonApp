@@ -48,22 +48,34 @@ authenticator = Authenticate(
     )
 
 def app():
-
     if 'connected' not in st.session_state:
         st.session_state['connected'] = False
-        
-    authenticator.check_authentification()
-    st.title('Account')    
+
+    # Check authentication and update session state
+    user_info = authenticator.check_authentification()
     
+    if user_info:
+        st.session_state['connected'] = True
+        st.session_state['user_info'] = user_info
+    else:
+        st.session_state['connected'] = False
+        st.session_state['user_info'] = {}
+
+    st.title('Account')    
+
     if st.session_state['connected']:
         st.image(st.session_state['user_info'].get('picture'))
-        st.write('Hello, '+ st.session_state['user_info'].get('name'))
-        st.write('Your email is '+ st.session_state['user_info'].get('email'))
+        st.write('Hello, ' + st.session_state['user_info'].get('name'))
+        st.write('Your email is ' + st.session_state['user_info'].get('email'))
         if st.button('Log out'):
             authenticator.logout()
+            st.session_state['connected'] = False
+            st.session_state['user_info'] = {}
+            st.write("You have been logged out.")
     else:
         st.write('You are not connected')
         authorization_url = authenticator.get_authorization_url()
-        st.markdown(f'[Login]({authorization_url})')
+        
         st.link_button('Login', authorization_url)
+        
 app()

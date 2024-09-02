@@ -1,27 +1,17 @@
 import streamlit as st
 import whisperx
 import ffmpeg
-import os
+import io
 import subprocess
 from datetime import datetime
-import time
 from docx import Document
+import torch
 import account
 
-# Define folder paths
-temp_folder = "temp_files"
-output_folder = "output_files"
-log_file = os.path.join(output_folder, "processing_log.txt")
-
-# Ensure temp and output directories exist
-os.makedirs(temp_folder, exist_ok=True)
-os.makedirs(output_folder, exist_ok=True)
-
 def log_activity(message):
-    """Logs activity with a timestamp to the global log file."""
+    """Logs activity with a timestamp to Streamlit's console."""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with open(log_file, 'a') as f:
-        f.write(f"{timestamp} - {message}\n")
+    st.write(f"{timestamp} - {message}")
 
 def format_duration(seconds):
     """Converts seconds to a human-readable format like '1 min 29 sec'."""
@@ -38,91 +28,44 @@ def format_timestamp(seconds):
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 def extract_audio(video_path):
-    """Extracts audio from a video file and saves it as a .wav file in the temp folder."""
-    filename = os.path.splitext(os.path.basename(video_path))[0]
-    output_file = os.path.join(temp_folder, f"{filename}_$.wav")
-
-    log_activity(f"Calling extract_audio for {video_path}.")
+    """Extracts audio from a video file and returns it as an in-memory .wav file."""
+    output_audio = io.BytesIO()
+    log_activity(f"Calling extract_audio for {video_path.name}.")
 
     try:
-        ffmpeg.input(video_path).output(output_file).run(quiet=True, overwrite_output=True)
-        log_activity(f"Audio extracted to {output_file}.")
-        return output_file
+        (ffmpeg.input(video_path).output('pipe:', format='wav').run_async(pipe_stdout=True)).stdout.readinto(output_audio)
+        output_audio.seek(0)
+        log_activity("Audio extraction complete.")
+        return output_audio
     except Exception as e:
         log_activity(f"Error extracting audio: {e}")
         return None
 
-def apply_noise_reduction(input_file, noise_profile_strength=0.15):
-    """Applies noise reduction using SoX and returns the path to the cleaned audio file."""
-    filename = os.path.splitext(os.path.basename(input_file))[0]
-    noise_profile = os.path.join(temp_folder, f"{filename}.prof")
-    output_file = os.path.join(temp_folder, f"{filename}_cleaned.wav")
-
-    log_activity(f"Calling apply_noise_reduction for {input_file}.")
+def apply_noise_reduction(input_audio):
+    """Applies noise reduction using SoX and returns the cleaned audio as an in-memory buffer."""
+    cleaned_audio = io.BytesIO()
+    log_activity("Applying noise reduction.")
 
     try:
-        subprocess.run(['sox', input_file, '-n', 'noiseprof', noise_profile], check=True)
-        log_activity(f"Noise profile generated at {noise_profile}.")
-
-        subprocess.run(['sox', input_file, output_file, 'noisered', noise_profile, str(noise_profile_strength)], check=True)
-        log_activity(f"Noise reduction applied. Cleaned file saved at {output_file}.")
-        return output_file
+        subprocess.run(['sox', '-t', 'wav', '-', '-t', 'wav', '-', 'noisered'],input=input_audio.read(), stdout=subprocess.PIPE, check=True)
+        cleaned_audio.write(subprocess.PIPE)
+        cleaned_audio.seek(0)
+        log_activity("Noise reduction applied.")
+        return cleaned_audio
     except subprocess.CalledProcessError as e:
         log_activity(f"Error during noise reduction: {e}")
         return None
 
-def get_audio_duration(audio_file):
-    """Returns the duration of the audio file in seconds."""
-    try:
-        probe = ffmpeg.probe(audio_file)
-        duration = float(probe['format']['duration'])
-        return duration
-    except Exception as e:
-        log_activity(f"Error getting audio duration: {e}")
-        return 0
-
-def process_audio(video_path):
-    """Processes the video to extract and clean audio, returning the cleaned audio path."""
-    log_activity("***************" * 5)
-    log_activity(f"Processing audio for {video_path}.")
-    log_activity("***************" * 5)
-
-    # Log file size
-    file_size = os.path.getsize(video_path) / (1024 * 1024)  # Size in MB
-    log_activity(f"File size: {file_size:.2f} MB.")
-
-    start_time = time.time()
-
-    wav_file = extract_audio(video_path)
-    if wav_file:
-        cleaned_audio = apply_noise_reduction(wav_file)
-
-        # Log the duration of the cleaned audio
-        duration = get_audio_duration(cleaned_audio)
-        formatted_duration = format_duration(duration)
-        log_activity(f"Audio duration: {formatted_duration}.")
-
-        log_activity(f"Temporary files: {wav_file}, {cleaned_audio}")
-
-        end_time = time.time()
-        time_taken = format_duration(end_time - start_time)
-        log_activity(f"Time taken to process audio: {time_taken}.")
-
-        return cleaned_audio
-
-    log_activity("Processing audio failed.")
-    return None
-
 def transcribe_audio_with_whisperx(audio_file):
-    """Transcribes the given audio file using WhisperX and saves the transcription to a .docx file."""
-    log_activity(f"Starting transcription for {audio_file}.")
+    """Transcribes the given audio file using WhisperX and returns the transcription as an in-memory .docx file."""
+    log_activity("Starting transcription.")
 
-    device = "cuda"  # Use 'cuda' if a GPU is available
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     batch_size = 8
-    compute_type = "float16"
+    compute_type = "float16" if torch.cuda.is_available() else "float32"
 
     try:
-        model = whisperx.load_model("medium", device, compute_type=compute_type,language='en')
+        model = whisperx.load_model("medium", device, compute_type=compute_type, language='en')
         log_activity("Whisper model loaded.")
 
         audio = whisperx.load_audio(audio_file)
@@ -138,8 +81,7 @@ def transcribe_audio_with_whisperx(audio_file):
         final_result = whisperx.assign_word_speakers(diarize_segments, aligned_result)
         log_activity("Speaker diarization completed.")
 
-        filename = os.path.splitext(os.path.basename(audio_file))[0]
-        output_file = os.path.join(output_folder, f"{filename}.docx")
+        docx_buffer = io.BytesIO()
         document = Document()
 
         current_speaker = None
@@ -167,9 +109,10 @@ def transcribe_audio_with_whisperx(audio_file):
         if current_speaker is not None:
             document.add_paragraph(f"[{format_timestamp(current_segment_start)} - {format_timestamp(current_segment_end)}] {current_speaker}: {' '.join(segment_text)}\n")
 
-        document.save(output_file)
-        log_activity(f"Transcription saved to {output_file}.")
-        return output_file
+        document.save(docx_buffer)
+        docx_buffer.seek(0)
+        log_activity("Transcription saved.")
+        return docx_buffer
 
     except Exception as e:
         log_activity(f"Error during transcription: {e}")
@@ -179,36 +122,32 @@ def app():
     st.title("Transcription Service")
     st.write("Upload an audio or video file, and get a transcribed .docx file with speaker diarization.")
 
-    uploaded_file = st.file_uploader("Choose an audio or video file", type=["wav", "mp4", "mkv", "avi","mp3"])
+    uploaded_file = st.file_uploader("Choose an audio or video file", type=["wav", "mp4", "mkv", "avi", "mp3"])
 
     if uploaded_file is not None:
-        # Save the uploaded file temporarily
-        file_path = os.path.join(temp_folder, uploaded_file.name)
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
         st.success(f"File {uploaded_file.name} uploaded successfully!")
 
         # Add a button to start the transcription process
         if st.button("Transcribe"):
             st.write("Processing the file...")
-            processed_audio = process_audio(file_path)
+            audio_data = extract_audio(uploaded_file)
+            audio_input=apply_noise_reduction(audio_data)
 
-            if processed_audio:
+            if audio_data:
                 st.write("Transcribing the audio...")
-                docx_file = transcribe_audio_with_whisperx(processed_audio)
+                docx_file = transcribe_audio_with_whisperx(audio_input)
 
                 if docx_file:
                     st.write("Transcription complete!")
-                    with open(docx_file, "rb") as f:
-                        st.download_button(
-                            label="Download Transcription",
-                            data=f,
-                            file_name=os.path.basename(docx_file),
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
-
-                    st.markdown(f"**[Download your transcription]({docx_file})**")
+                    st.download_button(
+                        label="Download Transcription",
+                        data=docx_file,
+                        file_name=f"{uploaded_file.name.split('.')[0]}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
                 else:
                     st.error("Failed to transcribe the audio.")
             else:
                 st.error("Failed to process the file.")
+
+app()

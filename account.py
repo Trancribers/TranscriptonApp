@@ -2,7 +2,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import auth, exceptions, credentials, initialize_app
-from streamlit_google_auth import authenticate_google
+from streamlit_google_auth import Authenticate
 
 # Firebase Setup
 firebase_cred = {
@@ -30,7 +30,7 @@ client_secret = st.secrets["google_oauth"]["client_secret"]
 redirect_uri = "https://transcribers.streamlit.app/"
 
 # Streamlit Authentication
-credentials = authenticate_google(
+credentials = Authenticate(
     client_id=client_id,
     client_secret=client_secret,
     redirect_uri=redirect_uri,

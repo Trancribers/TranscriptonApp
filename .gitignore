@@ -1,1 +1,2 @@
-.streamlit/
+# Ignore JSON credentials file
+google_oauth_cred.json

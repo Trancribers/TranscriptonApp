@@ -4,7 +4,18 @@ from firebase_admin import auth, exceptions, credentials, initialize_app
 import asyncio
 from httpx_oauth.clients.google import GoogleOAuth2
 
-firebase_cred=st.secrets["firebase"]
+firebase_cred = {
+    "type": st.secrets["firebase"]["type"],
+    "project_id": st.secrets["firebase"]["project_id"],
+    "private_key_id": st.secrets["firebase"]["private_key_id"],
+    "private_key": st.secrets["firebase"]["private_key"],
+    "client_email": st.secrets["firebase"]["client_email"],
+    "client_id": st.secrets["firebase"]["client_id"],
+    "auth_uri": st.secrets["firebase"]["auth_uri"],
+    "token_uri": st.secrets["firebase"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"]
+}
 
 cred=credentials.Certificate(firebase_cred)
 try:
@@ -34,7 +45,7 @@ def get_logged_in_user_email():
         query_params = st.query_params
         code = query_params.get('code')
         if code:
-            token=asyncio.run(get_access_token(client,redirect_url,code))
+            token=asyncio.run(get_access_token(client,redirect_url,code[0]))
             st.query_params
 
             if token:

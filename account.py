@@ -45,6 +45,7 @@ def get_logged_in_user_email():
         query_params = st.query_params
         code = query_params.get('code')
         if code:
+            st.write(f"Authorization code: {code[0]}") 
             token=asyncio.run(get_access_token(client,redirect_url,code[0]))
             st.query_params
 
@@ -84,16 +85,15 @@ def refresh_page():
 def app():
     st.title("Account")
 
-    if 'email' not in st.session_state:
-        st.session_state.email = None
-
-    if not st.session_state.email:
+    if st.session_state.email is None:
         get_logged_in_user_email()
-        show_login_button()
+        if not st.session_state.email:
+            show_login_button()
 
     if st.session_state.email:
-        st.write(st.session_state.email)
-        if st.button("Logout",type="primary", key="logout_non_requiured"):
-            st.session_state.email=None
+        st.write(f"Logged in as: {st.session_state.email}")
+        if st.button("Logout", type="primary", key="logout"):
+            st.session_state.email = None
             refresh_page()
+
 app()

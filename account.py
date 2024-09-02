@@ -26,7 +26,7 @@ try:
 except ValueError as e:
     initialize_app(cred)
 
-google_cred={
+google_cred={"web":{
     "client_id":st.secrets["google_oauth"]["client_id"],
     "project_id":st.secrets["google_oauth"]["project_id"],
     "auth_uri":st.secrets["google_oauth"]["auth_uri"],
@@ -34,7 +34,7 @@ google_cred={
     "auth_provider_x509_cert_url":st.secrets["google_oauth"]["auth_provider_x509_cert_url"],
     "client_secret":st.secrets["google_oauth"]["client_secret"],
     "redirect_uris":st.secrets["google_oauth"]["redirect_uris"]
-}
+}}
 with tempfile.NamedTemporaryFile(delete=True, suffix=".json",mode='w') as temp_file:
     # Write JSON content to the temporary file
     json.dump(google_cred, temp_file)

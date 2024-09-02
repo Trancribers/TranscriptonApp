@@ -48,6 +48,10 @@ authenticator = Authenticate(
     )
 
 def app():
+
+    if 'connected' not in st.session_state:
+        st.session_state['connected'] = False
+        
     authenticator.check_authentification()
     st.title('Account')    
     

@@ -4,16 +4,17 @@ from firebase_admin import auth, exceptions, credentials, initialize_app
 import asyncio
 from httpx_oauth.clients.google import GoogleOAuth2
 
+firebase_cred=st.secrets["firebase"]
 
-cred=credentials.Certificate("transcribers-47789-5a88ac1ae51c.json")
+cred=credentials.Certificate(firebase_cred)
 try:
     firebase_admin.get_app()
 except ValueError as e:
     initialize_app(cred)
 
 #initialize google oauth2 client
-client_id= st.secrets["client_id"]
-client_secrets= st.secrets["client_secret"]
+client_id= st.secrets["google_oauth"]["client_id"]
+client_secrets= st.secrets["google_oauth"]["client_secret"]
 redirect_url = "https://transcribers.streamlit.app/"
 
 client=GoogleOAuth2(client_id=client_id,client_secret=client_secrets)

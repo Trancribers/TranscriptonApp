@@ -35,7 +35,7 @@ google_cred={
     "client_secret":st.secrets["google_oauth"]["client_secret"],
     "redirect_uris":st.secrets["google_oauth"]["redirect_uris"]
 }
-with tempfile.NamedTemporaryFile(delete=True, suffix=".json") as temp_file:
+with tempfile.NamedTemporaryFile(delete=True, suffix=".json",mode='w') as temp_file:
     # Write JSON content to the temporary file
     json.dump(google_cred, temp_file)
     temp_file.flush()

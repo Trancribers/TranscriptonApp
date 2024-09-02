@@ -48,21 +48,21 @@ with tempfile.NamedTemporaryFile(delete=True, suffix=".json",mode='w') as temp_f
         redirect_uri="https://transcribers.streamlit.app/",
     )
 
-def app():
-    authenticator.check_authentification()
-
-    st.title('Account')
-
-
-    if st.session_state['connected']:
-        st.image(st.session_state['user_info'].get('picture'))
-        st.write('Hello, '+ st.session_state['user_info'].get('name'))
-        st.write('Your email is '+ st.session_state['user_info'].get('email'))
-        if st.button('Log out'):
-            authenticator.logout()
-    else:
-        st.write('You are not connected')
-        authorization_url = authenticator.get_authorization_url()
-        st.markdown(f'[Login]({authorization_url})')
-        st.link_button('Login', authorization_url)
-app()
+    def app():
+        authenticator.check_authentification()
+    
+        st.title('Account')
+    
+    
+        if st.session_state['connected']:
+            st.image(st.session_state['user_info'].get('picture'))
+            st.write('Hello, '+ st.session_state['user_info'].get('name'))
+            st.write('Your email is '+ st.session_state['user_info'].get('email'))
+            if st.button('Log out'):
+                authenticator.logout()
+        else:
+            st.write('You are not connected')
+            authorization_url = authenticator.get_authorization_url()
+            st.markdown(f'[Login]({authorization_url})')
+            st.link_button('Login', authorization_url)
+    app()

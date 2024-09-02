@@ -27,13 +27,22 @@ def format_timestamp(seconds):
     minutes, seconds = divmod(remainder, 60)
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
-def extract_audio(video_path):
+def extract_audio(file_buffer):
     """Extracts audio from a video file and returns it as an in-memory .wav file."""
     output_audio = io.BytesIO()
-    log_activity(f"Calling extract_audio for {video_path.name}.")
+    log_activity(f"Calling extract_audio for {file_buffer.name}.")
 
     try:
-        (ffmpeg.input(video_path).output('pipe:', format='wav').run_async(pipe_stdout=True)).stdout.readinto(output_audio)
+        # Use 'pipe:' for both input and output to handle in-memory files
+        process = (
+            ffmpeg
+            .input('pipe:', format=file_buffer.name.split('.')[-1])  # Detect format from filename
+            .output('pipe:', format='wav')
+            .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
+        )
+        # Read from file_buffer and write to process.stdin
+        stdout, stderr = process.communicate(input=file_buffer.read())
+        output_audio.write(stdout)
         output_audio.seek(0)
         log_activity("Audio extraction complete.")
         return output_audio
@@ -47,11 +56,21 @@ def apply_noise_reduction(input_audio):
     log_activity("Applying noise reduction.")
 
     try:
-        subprocess.run(['sox', '-t', 'wav', '-', '-t', 'wav', '-', 'noisered'],input=input_audio.read(), stdout=subprocess.PIPE, check=True)
-        cleaned_audio.write(subprocess.PIPE)
-        cleaned_audio.seek(0)
-        log_activity("Noise reduction applied.")
-        return cleaned_audio
+        process = subprocess.Popen(
+            ['sox', '-t', 'wav', '-', '-t', 'wav', '-', 'noisered', '0.15'],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = process.communicate(input=input_audio.read())
+        if process.returncode == 0:
+            cleaned_audio.write(stdout)
+            cleaned_audio.seek(0)
+            log_activity("Noise reduction applied.")
+            return cleaned_audio
+        else:
+            log_activity(f"Error during noise reduction: {stderr.decode()}")
+            return None
     except subprocess.CalledProcessError as e:
         log_activity(f"Error during noise reduction: {e}")
         return None
@@ -65,7 +84,7 @@ def transcribe_audio_with_whisperx(audio_file):
     compute_type = "float16" if torch.cuda.is_available() else "float32"
 
     try:
-        model = whisperx.load_model("medium", device, compute_type=compute_type, language='en')
+        model = whisperx.load_model("large-v2", device, compute_type=compute_type, language='en')
         log_activity("Whisper model loaded.")
 
         audio = whisperx.load_audio(audio_file)
@@ -131,23 +150,25 @@ def app():
         if st.button("Transcribe"):
             st.write("Processing the file...")
             audio_data = extract_audio(uploaded_file)
-            audio_input=apply_noise_reduction(audio_data)
-
             if audio_data:
-                st.write("Transcribing the audio...")
-                docx_file = transcribe_audio_with_whisperx(audio_input)
+                audio_input = apply_noise_reduction(audio_data)
+                if audio_input:
+                    st.write("Transcribing the audio...")
+                    docx_file = transcribe_audio_with_whisperx(audio_input)
 
-                if docx_file:
-                    st.write("Transcription complete!")
-                    st.download_button(
-                        label="Download Transcription",
-                        data=docx_file,
-                        file_name=f"{uploaded_file.name.split('.')[0]}.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
+                    if docx_file:
+                        st.write("Transcription complete!")
+                        st.download_button(
+                            label="Download Transcription",
+                            data=docx_file,
+                            file_name=f"{uploaded_file.name.split('.')[0]}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
+                    else:
+                        st.error("Failed to transcribe the audio.")
                 else:
-                    st.error("Failed to transcribe the audio.")
+                    st.error("Failed to apply noise reduction.")
             else:
-                st.error("Failed to process the file.")
+                st.error("Failed to extract audio.")
 
 app()

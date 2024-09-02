@@ -62,13 +62,17 @@ def get_logged_in_user_email():
         st.error(f"an error accurred:{e}")
 
 def show_login_button():
-    authorization_url=asyncio.run(client.get_authorization_url(
-        redirect_url,
-        scope=["email","profile"],
-        extras_params={"access_type":  "offline"}
-    ))
-    st.markdown(f'<a href="{authorization_url}" target="_self">Login</a>',unsafe_allow_html=True)
-    get_logged_in_user_email()
+    try:
+        authorization_url = asyncio.run(client.get_authorization_url(
+            redirect_url,
+            scope=["email", "profile"],
+            extras_params={"access_type": "offline"}
+        ))
+        st.write(f"Authorization URL: {authorization_url}")  # Debug: Print the URL
+        st.markdown(f'<a href="{authorization_url}" target="_self">Login</a>', unsafe_allow_html=True)
+        get_logged_in_user_email()
+    except Exception as e:
+        st.error(f"An error occurred while generating the login URL: {e}")
 
 def refresh_page():
     """Force refresh of the page using JavaScript."""

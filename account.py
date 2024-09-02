@@ -39,7 +39,7 @@ with tempfile.NamedTemporaryFile(delete=True, suffix=".json",mode='w') as temp_f
     # Write JSON content to the temporary file
     json.dump(google_cred, temp_file)
     temp_file.flush()
-    tempfile_path=tempfile.name
+    tempfile_path=temp_file.name
     # Streamlit Authentication
     credentials = Authenticate(
         secret_credentials_path = tempfile_path,

@@ -41,7 +41,7 @@ with tempfile.NamedTemporaryFile(delete=True, suffix=".json",mode='w') as temp_f
     temp_file.flush()
     tempfile_path=temp_file.name
     # Streamlit Authentication
-    credentials = Authenticate(
+    authenticator = Authenticate(
         secret_credentials_path = tempfile_path,
         cookie_name='nixon_cookie_name',
         cookie_key='nixon_secret',

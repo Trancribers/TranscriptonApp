@@ -3,6 +3,8 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import auth, exceptions, credentials, initialize_app
 from streamlit_google_auth import Authenticate, CookieHandler
+import json
+import tempfile
 
 # Firebase Setup
 firebase_cred = {
@@ -24,25 +26,43 @@ try:
 except ValueError as e:
     initialize_app(cred)
 
-
-# Streamlit Authentication
-credentials = Authenticate(
-    secret_credentials_path = google_oauth_cred.json,
-    cookie_name='my_cookie_name',
-    cookie_key='this_is_secret',
-    redirect_uri="https://transcribers.streamlit.app/",
-)
+google_cred={
+    "client_id":st.secrets["google_oauth"]["client_id"],
+    "project_id":st.secrets["google_oauth"]["project_id"],
+    "auth_uri":st.secrets["google_oauth"]["auth_uri"],
+    "token_uri":st.secrets["google_oauth"]["token_uri"],
+    "auth_provider_x509_cert_url":st.secrets["google_oauth"]["auth_provider_x509_cert_url"],
+    "client_secret":st.secrets["google_oauth"]["client_secret"],
+    "redirect_uris":st.secrets["google_oauth"]["redirect_uris"]
+}
+with tempfile.NamedTemporaryFile(delete=True, suffix=".json") as temp_file:
+    # Write JSON content to the temporary file
+    json.dump(google_cred, temp_file)
+    temp_file.flush()
+    tempfile_path=tempfile.name
+    # Streamlit Authentication
+    credentials = Authenticate(
+        secret_credentials_path = tempfile_path,
+        cookie_name='nixon_cookie_name',
+        cookie_key='nixon_secret',
+        redirect_uri="https://transcribers.streamlit.app/",
+    )
 
 def app():
-    st.title("Account")
+    authenticator.check_authentification()
 
-    if credentials:
-        st.write(f"Logged in as: {credentials['name']}")
-        st.write(f"Your email: {credentials['email']}")
-        if st.button("Logout", type="primary", key="logout"):
-            st.session_state.email = None
-            st.experimental_rerun()  # Refresh the page
+    st.title('Account')
+
+
+    if st.session_state['connected']:
+        st.image(st.session_state['user_info'].get('picture'))
+        st.write('Hello, '+ st.session_state['user_info'].get('name'))
+        st.write('Your email is '+ st.session_state['user_info'].get('email'))
+        if st.button('Log out'):
+            authenticator.logout()
     else:
-        st.markdown(f'<a href="{credentials.authorization_url}" target="_self">Login with Google</a>', unsafe_allow_html=True)
-
+        st.write('You are not connected')
+        authorization_url = authenticator.get_authorization_url()
+        st.markdown(f'[Login]({authorization_url})')
+        st.link_button('Login', authorization_url)
 app()

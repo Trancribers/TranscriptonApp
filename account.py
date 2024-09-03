@@ -86,7 +86,7 @@ def app():
     st.title("Google OAuth2 Authentication")
 
     # Display login or user info based on session state
-    if 'code' in st.get_query_params():
+    if 'code' in st.query_params:
         # Display user info if already authenticated
         display_user()
     else:

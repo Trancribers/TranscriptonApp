@@ -25,71 +25,48 @@ try:
     firebase_admin.get_app()
 except ValueError as e:
     initialize_app(cred)
-    
-client_id=st.secrets["google_oauth"]["client_id"]
-project_id=st.secrets["google_oauth"]["project_id"]
-auth_uri=st.secrets["google_oauth"]["auth_uri"]
-token_uri=st.secrets["google_oauth"]["token_uri"]
-auth_provider_x509_cert_url=st.secrets["google_oauth"]["auth_provider_x509_cert_url"]
-client_secret=st.secrets["google_oauth"]["client_secret"]
-redirect_uris=st.secrets["google_oauth"]["redirect_uris"]
 
-
-import os
-import asyncio
-from httpx_oauth.clients.google import GoogleOAuth2
-
-
-async def get_authorization_url(client: GoogleOAuth2, redirect_uri: str):
-    """Get the URL for Google OAuth2 authorization."""
-    authorization_url = await client.get_authorization_url(redirect_uri, scope=["profile", "email"])
-    return authorization_url
-
-async def get_access_token(client: GoogleOAuth2, redirect_uri: str, code: str):
-    """Get the access token using the authorization code."""
-    token = await client.get_access_token(code, redirect_uri)
-    return token
-
-async def get_email(client: GoogleOAuth2, token: str):
-    """Get the user ID and email using the access token."""
-    user_id, user_email = await client.get_id_email(token)
-    return user_id, user_email
-
-def get_login_str():
-    """Generate a Google login URL."""
-    client = GoogleOAuth2(client_id, client_secret)
-    authorization_url = asyncio.run(get_authorization_url(client, redirect_uris))
-    return f'<a target="_self" href="{authorization_url}">Google login</a>'
-
-def display_user() -> None:
-    """Display user information after login and provide logout option."""
-    client = GoogleOAuth2(client_id, client_secret)
-    # Retrieve the authorization code from the URL query parameters
-    query_params = st.get_query_params()
-    if 'code' in query_params:
-        code = query_params['code'][0]
-        # Get access token and user info
-        token = asyncio.run(get_access_token(client, redirect_uris, code))
-        user_id, user_email = asyncio.run(get_email(client, token['access_token']))
-        st.write(f"You're logged in as {user_email} and your ID is {user_id}")
-
-        # Logout button
-        if st.button('Logout'):
-            # Clear session state and re-run the app
-            st.session_state.clear()
-            st.rerun()
-    else:
-        st.error("Authorization code not found. Please ensure you have logged in.")
+google_cred={"web":{
+    "client_id":st.secrets["google_oauth"]["client_id"],
+    "project_id":st.secrets["google_oauth"]["project_id"],
+    "auth_uri":st.secrets["google_oauth"]["auth_uri"],
+    "token_uri":st.secrets["google_oauth"]["token_uri"],
+    "auth_provider_x509_cert_url":st.secrets["google_oauth"]["auth_provider_x509_cert_url"],
+    "client_secret":st.secrets["google_oauth"]["client_secret"],
+    "redirect_uris":st.secrets["google_oauth"]["redirect_uris"]
+}}
+with tempfile.NamedTemporaryFile(delete=False, suffix=".json",mode='w') as temp_file:
+    # Write JSON content to the temporary file
+    json.dump(google_cred, temp_file)
+    temp_file.flush()
+    # Streamlit Authentication
+authenticator = Authenticate(
+    secret_credentials_path = temp_file.name,
+    cookie_name='nixon_cookie_name',
+    cookie_key='nixon_secret',
+    redirect_uri="https://transcribers.streamlit.app/",
+    )
 
 def app():
-    """Main function to run the Streamlit app."""
-    st.title("Google OAuth2 Authentication")
 
-    # Display login or user info based on session state
-    if 'code' in st.query_params:
-        # Display user info if already authenticated
-        display_user()
+    # Check if the user is authenticated
+    authenticator.check_authentification()
+    
+    st.title('Account')    
+    
+    if st.session_state['connected']:
+        st.image(st.session_state['user_info'].get('picture'))
+        st.write('Hello, ' + st.session_state['user_info'].get('name'))
+        st.write('Your email is ' + st.session_state['user_info'].get('email'))
+        if st.button('Log out'):
+            authenticator.logout()
+            st.session_state['connected'] = False
+            st.session_state['user_info'] = {}
+            st.write("You have been logged out.")
     else:
-        # Show login link
-        st.markdown(get_login_str(), unsafe_allow_html=True)
+        st.write('You are not connected')
+        authorization_url = authenticator.get_authorization_url()
+        st.markdown(f'[Login]({authorization_url})')
+        st.link_button('Login', authorization_url)
+        
 app()

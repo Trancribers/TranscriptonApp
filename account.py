@@ -2,7 +2,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import auth, exceptions, credentials, initialize_app
-from streamlit_google_auth import Authenticate, CookieHandler
+from streamlit_google_auth import Authenticate
 import json
 import tempfile
 

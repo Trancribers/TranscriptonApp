@@ -6,6 +6,8 @@ from streamlit_google_auth import Authenticate
 import json
 import tempfile
 
+st.write("hello")
+
 # Firebase Setup
 firebase_cred = {
     "type": st.secrets["firebase"]["type"],

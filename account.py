@@ -49,10 +49,6 @@ def app():
         )
 
 
-    if 'connected' not in st.session_state:
-        st.session_state['connected'] = False
-        st.session_state['user_info'] = {}
-
     # Check if the user is authenticated
     authenticator.check_authentification()
     

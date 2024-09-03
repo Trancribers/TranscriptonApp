@@ -6,6 +6,8 @@ from streamlit_google_auth import Authenticate
 import json
 import tempfile
 
+st.write("hello")
+
 # Firebase Setup
 firebase_cred = {
     "type": st.secrets["firebase"]["type"],
@@ -48,25 +50,18 @@ authenticator = Authenticate(
     )
 
 def app():
-
     # Check if the user is authenticated
     authenticator.check_authentification()
     
     st.title('Account')    
     
+    authenticator.login()
+    
     if st.session_state['connected']:
         st.image(st.session_state['user_info'].get('picture'))
-        st.write('Hello, ' + st.session_state['user_info'].get('name'))
-        st.write('Your email is ' + st.session_state['user_info'].get('email'))
+        st.write('Hello, '+ st.session_state['user_info'].get('name'))
+        st.write('Your email is '+ st.session_state['user_info'].get('email'))
         if st.button('Log out'):
             authenticator.logout()
-            st.session_state['connected'] = False
-            st.session_state['user_info'] = {}
-            st.write("You have been logged out.")
-    else:
-        st.write('You are not connected')
-        authorization_url = authenticator.get_authorization_url()
-        st.markdown(f'[Login]({authorization_url})')
-        st.link_button('Login', authorization_url)
         
 app()
